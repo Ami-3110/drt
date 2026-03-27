@@ -9,17 +9,21 @@ from __future__ import annotations
 import base64
 import os
 
-from drt.config.models import ApiKeyAuth, BasicAuth, BearerAuth
 from drt.config.credentials import resolve_env
 
 # Re-export AuthConfig type for convenience
-from drt.config.models import AuthConfig  # noqa: F401
+from drt.config.models import (
+    ApiKeyAuth,
+    AuthConfig,  # noqa: F401
+    BasicAuth,
+    BearerAuth,
+)
 
 
 class AuthHandler:
     """Resolve an AuthConfig to ready-to-use HTTP headers."""
 
-    def __init__(self, auth: "AuthConfig | None") -> None:
+    def __init__(self, auth: AuthConfig | None) -> None:
         self._auth = auth
 
     def get_headers(self) -> dict[str, str]:

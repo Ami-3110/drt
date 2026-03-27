@@ -5,13 +5,10 @@ from __future__ import annotations
 from collections.abc import Iterator
 from pathlib import Path
 
-import pytest
-
 from drt.config.credentials import BigQueryProfile, ProfileConfig
 from drt.config.models import DestinationConfig, SyncConfig, SyncOptions
 from drt.destinations.base import SyncResult
 from drt.engine.sync import batch, run_sync
-
 
 # ---------------------------------------------------------------------------
 # Fakes (prefer over MagicMock — they document the Protocol)

@@ -7,7 +7,6 @@ from collections.abc import Iterator
 import pytest
 
 from drt.config.credentials import BigQueryProfile, ProfileConfig
-from drt.config.models import DestinationConfig, SyncConfig, SyncOptions
 
 
 class FakeSource:

@@ -6,8 +6,6 @@ directly from engine, config, or source/destination code.
 
 from __future__ import annotations
 
-from pathlib import Path
-
 from rich.console import Console
 from rich.table import Table
 from rich.text import Text

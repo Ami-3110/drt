@@ -27,12 +27,11 @@ Example ~/.drt/profiles.yml:
 from __future__ import annotations
 
 import os
-from dataclasses import dataclass, field
+from dataclasses import dataclass
 from pathlib import Path
-from typing import Literal, Union
+from typing import Literal
 
 import yaml
-
 
 # ---------------------------------------------------------------------------
 # Source profile types
@@ -65,7 +64,7 @@ class PostgresProfile:
 
 
 # Union type — used throughout the codebase
-ProfileConfig = Union[BigQueryProfile, DuckDBProfile, PostgresProfile]
+ProfileConfig = BigQueryProfile | DuckDBProfile | PostgresProfile
 
 
 # ---------------------------------------------------------------------------

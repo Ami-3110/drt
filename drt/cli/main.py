@@ -16,7 +16,6 @@ from drt.cli.output import (
     print_sync_result,
     print_sync_start,
     print_sync_table,
-    print_validation_error,
     print_validation_ok,
 )
 
@@ -151,7 +150,9 @@ def list_syncs() -> None:
 
 @app.command()
 def validate(
-    emit_schema: bool = typer.Option(False, "--emit-schema", help="Write JSON Schemas to .drt/schemas/."),
+    emit_schema: bool = typer.Option(  # noqa: E501
+        False, "--emit-schema", help="Write JSON Schemas to .drt/schemas/."
+    ),
 ) -> None:
     """Validate sync definitions against the JSON Schema."""
     from drt.config.parser import load_syncs
@@ -162,7 +163,6 @@ def validate(
         console.print("[dim]No syncs found.[/dim]")
         return
 
-    all_ok = True
     for sync in syncs:
         # Pydantic already validated on load; reaching here means OK
         print_validation_ok(sync.name)

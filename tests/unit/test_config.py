@@ -7,19 +7,15 @@ from pathlib import Path
 import pytest
 import yaml
 
-from drt.config.credentials import BigQueryProfile, ProfileConfig, load_profile, save_profile
+from drt.config.credentials import BigQueryProfile, load_profile, save_profile
 from drt.config.models import (
     ApiKeyAuth,
     BasicAuth,
     BearerAuth,
-    DestinationConfig,
     ProjectConfig,
     RestApiDestinationConfig,
-    SyncConfig,
-    SyncOptions,
 )
 from drt.config.parser import load_project, load_syncs
-
 
 # ---------------------------------------------------------------------------
 # Auth model discrimination

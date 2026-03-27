@@ -4,7 +4,7 @@ from __future__ import annotations
 
 from pathlib import Path
 
-from drt.config.credentials import BigQueryProfile, ProfileConfig
+from drt.config.credentials import BigQueryProfile
 from drt.engine.resolver import parse_ref, resolve_model_ref
 
 

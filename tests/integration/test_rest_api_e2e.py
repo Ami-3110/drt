@@ -8,24 +8,19 @@ rate limiting, retry, and error handling.
 from __future__ import annotations
 
 import json
-import os
 import time
-from pathlib import Path
 
-import pytest
-
-from drt.config.credentials import BigQueryProfile, ProfileConfig
-from drt.config.models import RestApiDestinationConfig, SyncConfig, SyncOptions, RateLimitConfig
+from drt.config.credentials import BigQueryProfile
+from drt.config.models import RateLimitConfig, RestApiDestinationConfig, SyncConfig, SyncOptions
 from drt.destinations.rest_api import RestApiDestination
 from drt.engine.sync import run_sync
 from tests.integration.conftest import FakeSource
-
 
 # ---------------------------------------------------------------------------
 # Helpers
 # ---------------------------------------------------------------------------
 
-def _dest_config(httpserver, body_template: str | None = None, auth=None) -> RestApiDestinationConfig:
+def _dest_config(httpserver, body_template: str | None = None, auth=None) -> RestApiDestinationConfig:  # noqa: E501
     return RestApiDestinationConfig(
         type="rest_api",
         url=httpserver.url_for("/webhook"),
@@ -36,7 +31,7 @@ def _dest_config(httpserver, body_template: str | None = None, auth=None) -> Res
     )
 
 
-def _sync(dest: DestinationConfig, rate_limit_rps: int = 100, on_error: str = "skip") -> SyncConfig:
+def _sync(dest: RestApiDestinationConfig, rate_limit_rps: int = 100, on_error: str = "skip") -> SyncConfig:  # noqa: E501
     return SyncConfig(
         name="test_sync",
         model="ref('table')",
@@ -113,7 +108,7 @@ def test_bearer_auth_header_sent(httpserver, tmp_path, monkeypatch):
     source = FakeSource([{"id": 1}])
     auth = BearerAuth(type="bearer", token_env="TEST_TOKEN")
     dest_cfg = _dest_config(httpserver, auth=auth)
-    run_sync(sync := _sync(dest_cfg), source, RestApiDestination(), _profile(), tmp_path)
+    run_sync(_sync(dest_cfg), source, RestApiDestination(), _profile(), tmp_path)
 
     assert received_headers.get("Authorization") == "Bearer sk-secret123"
 
@@ -152,8 +147,8 @@ def test_on_error_skip_continues(httpserver, tmp_path):
     dest_cfg = _dest_config(httpserver)
 
     # RetryConfig with max_attempts=1 so the 500 fails immediately
-    from drt.destinations.retry import RetryConfig as RC
     import drt.destinations.rest_api as ra_module
+    from drt.destinations.retry import RetryConfig as RC
     original = ra_module._DEFAULT_RETRY
     ra_module._DEFAULT_RETRY = RC(max_attempts=1)
 
@@ -176,8 +171,8 @@ def test_retry_on_500_succeeds_on_third(httpserver, tmp_path):
     httpserver.expect_ordered_request("/webhook").respond_with_data("err", status=500)
     httpserver.expect_ordered_request("/webhook").respond_with_data("OK", status=200)
 
-    from drt.destinations.retry import RetryConfig as RC
     import drt.destinations.rest_api as ra_module
+    from drt.destinations.retry import RetryConfig as RC
     original = ra_module._DEFAULT_RETRY
     ra_module._DEFAULT_RETRY = RC(max_attempts=3, initial_backoff=0.01, backoff_multiplier=1.0)
 
