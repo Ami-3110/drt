@@ -2,14 +2,22 @@
 
 This module is the primary candidate for future Rust rewrite (PyO3).
 Keep it pure: no I/O side effects beyond source/destination calls.
+CLI owns all console output; engine only returns SyncResult.
 """
 
+from __future__ import annotations
+
 from collections.abc import Iterator
+from datetime import datetime, timezone
+from pathlib import Path
 from typing import Any
 
-from drt.config.models import DestinationConfig, SourceConfig, SyncConfig
+from drt.config.credentials import ProfileConfig
+from drt.config.models import SyncConfig
 from drt.destinations.base import Destination, SyncResult
+from drt.engine.resolver import resolve_model_ref
 from drt.sources.base import Source
+from drt.state.manager import StateManager, SyncState
 
 
 def batch(iterable: Iterator[Any], size: int) -> Iterator[list[Any]]:
@@ -28,21 +36,37 @@ def run_sync(
     sync: SyncConfig,
     source: Source,
     destination: Destination,
-    source_config: SourceConfig,
+    profile: ProfileConfig,
+    project_dir: Path,
     dry_run: bool = False,
+    state_manager: StateManager | None = None,
 ) -> SyncResult:
-    """Run a single sync: extract from source, load to destination."""
-    # TODO: resolve model ref to actual SQL query (Phase 1)
-    query = f"SELECT * FROM {sync.model}"
+    """Run a single sync: extract from source, load to destination.
 
-    records_iter = source.extract(query, source_config)
+    Args:
+        sync: Parsed sync YAML configuration.
+        source: Source implementation (BigQuery, etc.).
+        destination: Destination implementation (REST API, etc.).
+        profile: Resolved source credentials.
+        project_dir: Root of drt project (for ref() resolution).
+        dry_run: If True, extract but do not call destination.load().
+        state_manager: If provided, persist sync result after completion.
+
+    Returns:
+        Aggregated SyncResult across all batches.
+    """
+    started_at = datetime.now(timezone.utc).isoformat()
+    query = resolve_model_ref(sync.model, project_dir, profile)
+
+    records_iter = source.extract(query, profile)
     total_result = SyncResult()
 
     for record_batch in batch(records_iter, sync.sync.batch_size):
         if dry_run:
             total_result.success += len(record_batch)
             continue
-        result = destination.load(record_batch, sync.destination)
+
+        result = destination.load(record_batch, sync.destination, sync.sync)
         total_result.success += result.success
         total_result.failed += result.failed
         total_result.skipped += result.skipped
@@ -50,5 +74,21 @@ def run_sync(
 
         if sync.sync.on_error == "fail" and result.failed > 0:
             break
+
+    if state_manager is not None:
+        status = (
+            "success" if total_result.failed == 0
+            else "partial" if total_result.success > 0
+            else "failed"
+        )
+        state_manager.save_sync(
+            SyncState(
+                sync_name=sync.name,
+                last_run_at=started_at,
+                records_synced=total_result.success,
+                status=status,
+                error=total_result.errors[0] if total_result.errors else None,
+            )
+        )
 
     return total_result

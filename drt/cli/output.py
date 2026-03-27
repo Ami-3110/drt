@@ -1,0 +1,149 @@
+"""Centralized Rich output for the drt CLI.
+
+All console output goes through this module — never call console.print()
+directly from engine, config, or source/destination code.
+"""
+
+from __future__ import annotations
+
+from pathlib import Path
+
+from rich.console import Console
+from rich.table import Table
+from rich.text import Text
+
+from drt.config.models import SyncConfig
+from drt.destinations.base import SyncResult
+from drt.state.manager import SyncState
+
+console = Console()
+
+
+# ---------------------------------------------------------------------------
+# init
+# ---------------------------------------------------------------------------
+
+def print_init_success(paths: list[str]) -> None:
+    console.print()
+    console.print("[bold green]✓ drt project initialized[/bold green]")
+    for p in paths:
+        console.print(f"  [dim]Created[/dim] {p}")
+    console.print()
+    console.print("Next steps:")
+    console.print("  1. Edit [bold]drt_project.yml[/bold] if needed")
+    console.print("  2. Add sync definitions to [bold]syncs/[/bold]")
+    console.print("  3. Run [bold]drt run --dry-run[/bold] to preview")
+    console.print()
+
+
+# ---------------------------------------------------------------------------
+# run
+# ---------------------------------------------------------------------------
+
+def print_sync_start(sync_name: str, dry_run: bool) -> None:
+    tag = " [dim](dry-run)[/dim]" if dry_run else ""
+    console.print(f"\n[bold]→ {sync_name}[/bold]{tag}")
+
+
+def print_sync_result(sync_name: str, result: SyncResult, elapsed: float) -> None:
+    if result.failed == 0:
+        status = "[green]✓[/green]"
+    elif result.success > 0:
+        status = "[yellow]⚠[/yellow]"
+    else:
+        status = "[red]✗[/red]"
+
+    console.print(
+        f"  {status} {result.success} synced"
+        + (f", {result.failed} failed" if result.failed else "")
+        + (f", {result.skipped} skipped" if result.skipped else "")
+        + f"  [dim]({elapsed:.1f}s)[/dim]"
+    )
+    for err in result.errors[:5]:
+        console.print(f"  [red]  • {err}[/red]")
+    if len(result.errors) > 5:
+        console.print(f"  [red]  … and {len(result.errors) - 5} more errors[/red]")
+
+
+# ---------------------------------------------------------------------------
+# list
+# ---------------------------------------------------------------------------
+
+def print_sync_table(syncs: list[SyncConfig]) -> None:
+    if not syncs:
+        console.print("[dim]No syncs found. Add .yml files to the syncs/ directory.[/dim]")
+        return
+
+    table = Table(show_header=True, header_style="bold", box=None, padding=(0, 2))
+    table.add_column("name")
+    table.add_column("model")
+    table.add_column("destination")
+    table.add_column("mode")
+    table.add_column("description", style="dim")
+
+    for sync in syncs:
+        table.add_row(
+            sync.name,
+            sync.model,
+            f"{sync.destination.type}",
+            sync.sync.mode,
+            sync.description or "",
+        )
+
+    console.print(table)
+
+
+# ---------------------------------------------------------------------------
+# validate
+# ---------------------------------------------------------------------------
+
+def print_validation_ok(sync_name: str) -> None:
+    console.print(f"[green]✓[/green] {sync_name}")
+
+
+def print_validation_error(sync_name: str, errors: list[str]) -> None:
+    console.print(f"[red]✗[/red] {sync_name}")
+    for err in errors:
+        console.print(f"  [red]• {err}[/red]")
+
+
+# ---------------------------------------------------------------------------
+# status
+# ---------------------------------------------------------------------------
+
+def print_status_table(states: dict[str, SyncState]) -> None:
+    if not states:
+        console.print("[dim]No sync history found. Run `drt run` first.[/dim]")
+        return
+
+    table = Table(show_header=True, header_style="bold", box=None, padding=(0, 2))
+    table.add_column("sync")
+    table.add_column("status")
+    table.add_column("records")
+    table.add_column("last run")
+    table.add_column("error", style="dim")
+
+    for name, state in sorted(states.items()):
+        status_text = {
+            "success": "[green]success[/green]",
+            "failed": "[red]failed[/red]",
+            "partial": "[yellow]partial[/yellow]",
+        }.get(state.status, state.status)
+
+        table.add_row(
+            name,
+            Text.from_markup(status_text),
+            str(state.records_synced),
+            state.last_run_at[:19].replace("T", " "),  # trim microseconds
+            state.error or "",
+        )
+
+    console.print(table)
+
+
+# ---------------------------------------------------------------------------
+# errors
+# ---------------------------------------------------------------------------
+
+def print_error(message: str) -> None:
+    console.print(f"[bold red]Error:[/bold red] {message}")

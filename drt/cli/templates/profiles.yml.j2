@@ -1,0 +1,10 @@
+{{ profile_name }}:
+  type: {{ source_type }}
+{% if source_type == "bigquery" %}
+  project: {{ gcp_project }}
+  dataset: {{ dataset }}
+  method: {{ auth_method }}
+{% if auth_method == "keyfile" %}
+  keyfile: {{ keyfile }}
+{% endif %}
+{% endif %}

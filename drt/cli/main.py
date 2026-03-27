@@ -1,16 +1,30 @@
 """drt CLI entry point."""
 
+from __future__ import annotations
+
+import time
+from pathlib import Path
+
 import typer
-from rich.console import Console
 
 from drt import __version__
+from drt.cli.output import (
+    console,
+    print_error,
+    print_init_success,
+    print_status_table,
+    print_sync_result,
+    print_sync_start,
+    print_sync_table,
+    print_validation_error,
+    print_validation_ok,
+)
 
 app = typer.Typer(
     name="drt",
     help="Reverse ETL for the code-first data stack.",
     no_args_is_help=True,
 )
-console = Console()
 
 
 def version_callback(value: bool) -> None:
@@ -28,42 +42,149 @@ def main(
     pass
 
 
+# ---------------------------------------------------------------------------
+# init
+# ---------------------------------------------------------------------------
+
 @app.command()
 def init() -> None:
     """Initialize a new drt project in the current directory."""
-    console.print("[bold green]Initializing drt project...[/bold green]")
-    # TODO: Phase 1 — scaffold drt_project.yml and syncs/
-    console.print("[yellow]Coming soon in Phase 1[/yellow]")
+    from drt.cli.init_wizard import run_wizard, scaffold_project
 
+    try:
+        answers = run_wizard()
+        created = scaffold_project(answers, Path("."))
+        print_init_success(created)
+    except (KeyboardInterrupt, typer.Abort):
+        console.print("\n[dim]Aborted.[/dim]")
+        raise typer.Exit(1)
+    except Exception as e:
+        print_error(str(e))
+        raise typer.Exit(1)
+
+
+# ---------------------------------------------------------------------------
+# run
+# ---------------------------------------------------------------------------
 
 @app.command()
 def run(
     select: str = typer.Option(None, "--select", "-s", help="Run a specific sync by name."),
     dry_run: bool = typer.Option(False, "--dry-run", help="Preview without writing data."),
+    verbose: bool = typer.Option(False, "--verbose", help="Show row-level error details."),
 ) -> None:
     """Run sync(s) defined in the project."""
-    if dry_run:
-        console.print("[bold]Dry-run mode[/bold] — no data will be written.")
-    # TODO: Phase 1 — load config, run engine
-    console.print("[yellow]Coming soon in Phase 1[/yellow]")
+    from drt.config.credentials import load_profile
+    from drt.config.parser import load_project, load_syncs
+    from drt.destinations.rest_api import RestApiDestination
+    from drt.engine.sync import run_sync
+    from drt.sources.bigquery import BigQuerySource
+    from drt.state.manager import StateManager
 
+    try:
+        project = load_project(Path("."))
+    except FileNotFoundError as e:
+        print_error(str(e))
+        raise typer.Exit(1)
+
+    try:
+        profile = load_profile(project.profile)
+    except (FileNotFoundError, KeyError, ValueError) as e:
+        print_error(str(e))
+        raise typer.Exit(1)
+
+    syncs = load_syncs(Path("."))
+    if not syncs:
+        console.print("[dim]No syncs found in syncs/. Add .yml files to get started.[/dim]")
+        raise typer.Exit()
+
+    if select:
+        syncs = [s for s in syncs if s.name == select]
+        if not syncs:
+            print_error(f"No sync named '{select}' found.")
+            raise typer.Exit(1)
+
+    source = BigQuerySource()
+    state_mgr = StateManager(Path("."))
+    had_errors = False
+
+    for sync in syncs:
+        dest = RestApiDestination()
+        print_sync_start(sync.name, dry_run)
+        t0 = time.monotonic()
+        try:
+            result = run_sync(sync, source, dest, profile, Path("."), dry_run, state_mgr)
+        except Exception as e:
+            print_error(f"[{sync.name}] Unexpected error: {e}")
+            had_errors = True
+            continue
+        print_sync_result(sync.name, result, time.monotonic() - t0)
+        if result.failed > 0:
+            had_errors = True
+            if verbose and hasattr(result, "row_errors"):
+                from drt.destinations.row_errors import DetailedSyncResult
+                if isinstance(result, DetailedSyncResult):
+                    for re in result.row_errors:
+                        console.print(
+                            f"    [dim]row {re.batch_index}[/dim] "
+                            f"[red]HTTP {re.http_status}[/red] {re.error_message[:120]}"
+                        )
+
+    if had_errors:
+        raise typer.Exit(1)
+
+
+# ---------------------------------------------------------------------------
+# list
+# ---------------------------------------------------------------------------
 
 @app.command(name="list")
 def list_syncs() -> None:
     """List all sync definitions in the project."""
-    # TODO: Phase 1 — parse syncs/ and display
-    console.print("[yellow]Coming soon in Phase 1[/yellow]")
+    from drt.config.parser import load_syncs
 
+    syncs = load_syncs(Path("."))
+    print_sync_table(syncs)
+
+
+# ---------------------------------------------------------------------------
+# validate
+# ---------------------------------------------------------------------------
 
 @app.command()
-def validate() -> None:
+def validate(
+    emit_schema: bool = typer.Option(False, "--emit-schema", help="Write JSON Schemas to .drt/schemas/."),
+) -> None:
     """Validate sync definitions against the JSON Schema."""
-    # TODO: Phase 1 — validate YAML configs
-    console.print("[yellow]Coming soon in Phase 1[/yellow]")
+    from drt.config.parser import load_syncs
+    from drt.config.schema import write_schemas
 
+    syncs = load_syncs(Path("."))
+    if not syncs:
+        console.print("[dim]No syncs found.[/dim]")
+        return
+
+    all_ok = True
+    for sync in syncs:
+        # Pydantic already validated on load; reaching here means OK
+        print_validation_ok(sync.name)
+
+    if emit_schema:
+        schema_dir = Path(".") / ".drt" / "schemas"
+        written = write_schemas(schema_dir)
+        console.print(f"\n[dim]Schemas written to {schema_dir}/[/dim]")
+        for p in written:
+            console.print(f"  {p}")
+
+
+# ---------------------------------------------------------------------------
+# status
+# ---------------------------------------------------------------------------
 
 @app.command()
 def status() -> None:
     """Show the status of the most recent sync runs."""
-    # TODO: Phase 2 — read from StateManager
-    console.print("[yellow]Coming soon in Phase 2[/yellow]")
+    from drt.state.manager import StateManager
+
+    states = StateManager(Path(".")).get_all()
+    print_status_table(states)

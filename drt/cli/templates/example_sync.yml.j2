@@ -1,0 +1,26 @@
+name: example_sync
+description: "Example sync — edit to match your use case"
+
+# ref('table_name') resolves to: SELECT * FROM {{ dataset }}.table_name
+# Or write raw SQL: model: "SELECT id, name FROM {{ dataset }}.my_table WHERE active = true"
+model: ref('my_table')
+
+destination:
+  type: rest_api
+  url: "https://your-api.example.com/endpoint"
+  method: POST
+  headers:
+    Content-Type: "application/json"
+  # body_template uses Jinja2. Row fields accessed via {{ "{{" }} row.field_name {{ "}}" }}
+  body_template: |
+    { "id": "{{ "{{" }} row.id {{ "}}" }}", "name": "{{ "{{" }} row.name {{ "}}" }}" }
+  # auth:
+  #   type: bearer
+  #   token_env: MY_API_TOKEN   # export MY_API_TOKEN=sk-...
+
+sync:
+  mode: full
+  batch_size: 100
+  rate_limit:
+    requests_per_second: 5
+  on_error: skip

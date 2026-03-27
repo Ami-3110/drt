@@ -4,6 +4,8 @@ Simple by design: no external dependencies, no infrastructure.
 Future: bincode (Rust) for fast binary serialization.
 """
 
+from __future__ import annotations
+
 import json
 from dataclasses import asdict, dataclass
 from datetime import datetime, timezone
@@ -42,6 +44,11 @@ class StateManager:
         if sync_name not in data:
             return None
         return SyncState(**data[sync_name])
+
+    def get_all(self) -> dict[str, SyncState]:
+        """Return all sync states keyed by sync name."""
+        data = self._load_all()
+        return {k: SyncState(**v) for k, v in data.items()}
 
     def save_sync(self, state: SyncState) -> None:
         data = self._load_all()

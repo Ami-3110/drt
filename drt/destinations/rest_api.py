@@ -1,47 +1,101 @@
-"""Generic REST API destination.
+"""Generic REST API destination — Phase 2 implementation.
 
-Supports any HTTP endpoint with Jinja2 body templating,
-rate limiting, and configurable error handling.
+Features:
+  - Auth header injection (Bearer, API Key, Basic) via AuthHandler
+  - Token-bucket rate limiting via RateLimiter
+  - Exponential backoff retry via with_retry
+  - Row-level error tracking via DetailedSyncResult
 """
 
-import time
+from __future__ import annotations
 
 import httpx
 
-from drt.config.models import DestinationConfig
+from drt.config.models import DestinationConfig, SyncOptions
+from drt.destinations.auth import AuthHandler
 from drt.destinations.base import SyncResult
+from drt.destinations.rate_limiter import RateLimiter
+from drt.destinations.retry import RetryConfig, with_retry
+from drt.destinations.row_errors import DetailedSyncResult, RowError
 from drt.templates.renderer import render_template
+
+_DEFAULT_RETRY = RetryConfig()
 
 
 class RestApiDestination:
     """Send records to any REST API endpoint."""
 
-    def load(self, records: list[dict], config: DestinationConfig) -> SyncResult:
-        result = SyncResult()
-        rate_limit = config.auth  # placeholder; rate_limit comes from SyncOptions
+    def load(
+        self,
+        records: list[dict],
+        config: DestinationConfig,
+        sync_options: SyncOptions,
+    ) -> SyncResult:
+        result = DetailedSyncResult()
+        auth_headers = AuthHandler(config.auth).get_headers()
+        headers = {**config.headers, **auth_headers}
+        rate_limiter = RateLimiter(sync_options.rate_limit.requests_per_second)
 
         with httpx.Client() as client:
-            for record in records:
-                body = (
-                    render_template(config.body_template, record)
-                    if config.body_template
-                    else record
-                )
-                try:
+            for i, record in enumerate(records):
+                rate_limiter.acquire()
+
+                body: dict | str
+                if config.body_template:
+                    try:
+                        body = render_template(config.body_template, record)
+                    except ValueError as e:
+                        result.row_errors.append(
+                            RowError(
+                                batch_index=i,
+                                record_preview=str(record)[:200],
+                                http_status=None,
+                                error_message=f"Template error: {e}",
+                            )
+                        )
+                        result.failed += 1
+                        continue
+                else:
+                    body = record
+
+                def do_request(
+                    _body: dict | str = body,
+                    _headers: dict = headers,
+                ) -> httpx.Response:
                     response = client.request(
                         method=config.method,
                         url=config.url,
-                        headers=config.headers,
-                        json=body if isinstance(body, dict) else None,
-                        content=body if isinstance(body, str) else None,
+                        headers=_headers,
+                        json=_body if isinstance(_body, dict) else None,
+                        content=_body.encode() if isinstance(_body, str) else None,
                     )
                     response.raise_for_status()
+                    return response
+
+                try:
+                    with_retry(do_request, _DEFAULT_RETRY)
                     result.success += 1
                 except httpx.HTTPStatusError as e:
+                    result.row_errors.append(
+                        RowError(
+                            batch_index=i,
+                            record_preview=str(record)[:200],
+                            http_status=e.response.status_code,
+                            error_message=e.response.text[:500],
+                        )
+                    )
                     result.failed += 1
-                    result.errors.append(f"HTTP {e.response.status_code}: {e.response.text[:200]}")
                 except Exception as e:
+                    result.row_errors.append(
+                        RowError(
+                            batch_index=i,
+                            record_preview=str(record)[:200],
+                            http_status=None,
+                            error_message=str(e),
+                        )
+                    )
                     result.failed += 1
-                    result.errors.append(str(e))
 
-        return result
+        # Return as SyncResult-compatible object
+        # DetailedSyncResult has all SyncResult fields + row_errors
+        return result  # type: ignore[return-value]
