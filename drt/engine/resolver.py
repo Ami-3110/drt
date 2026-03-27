@@ -14,7 +14,7 @@ from __future__ import annotations
 import re
 from pathlib import Path
 
-from drt.config.credentials import ProfileConfig
+from drt.config.credentials import BigQueryProfile, DuckDBProfile, PostgresProfile, ProfileConfig
 
 # Matches: ref('table') or ref("table")
 _REF_PATTERN = re.compile(r"""^ref\(\s*['"]([^'"]+)['"]\s*\)$""", re.IGNORECASE)
@@ -61,8 +61,14 @@ def resolve_model_ref(
         sql_file = project_dir / "syncs" / "models" / f"{table_name}.sql"
         if sql_file.exists():
             return sql_file.read_text().strip()
-        # Fall back to full-qualified table SELECT
-        return f"SELECT * FROM `{profile.dataset}`.`{table_name}`"
+        # Fall back to qualified table SELECT — syntax differs by source
+        if isinstance(profile, BigQueryProfile):
+            return f"SELECT * FROM `{profile.dataset}`.`{table_name}`"
+        if isinstance(profile, DuckDBProfile):
+            return f"SELECT * FROM {table_name}"
+        if isinstance(profile, PostgresProfile):
+            return f'SELECT * FROM "{table_name}"'
+        return f"SELECT * FROM {table_name}"
 
     # Not a ref() — treat as raw SQL or bare table name
     return model_str
