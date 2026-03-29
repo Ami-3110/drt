@@ -1,0 +1,86 @@
+# Issue / PR labels managed as code.
+# Apply with: make sync-labels
+
+# ── Type ─────────────────────────────────────────────────────────────────────
+- name: "bug"
+  color: "d73a4a"
+  description: "Something isn't working"
+
+- name: "feat"
+  color: "0075ca"
+  description: "New feature or request"
+
+- name: "docs"
+  color: "0075ca"
+  description: "Improvements or additions to documentation"
+
+- name: "chore"
+  color: "e4e669"
+  description: "Build process, CI, or tooling changes"
+
+- name: "refactor"
+  color: "e4e669"
+  description: "Code change that neither fixes a bug nor adds a feature"
+
+- name: "test"
+  color: "bfd4f2"
+  description: "Adding or improving tests"
+
+# ── Area ─────────────────────────────────────────────────────────────────────
+- name: "cli"
+  color: "c5def5"
+  description: "CLI commands"
+
+- name: "engine"
+  color: "c5def5"
+  description: "Sync engine (future Rust core)"
+
+- name: "source"
+  color: "c5def5"
+  description: "Source connectors (BigQuery, DuckDB, Postgres…)"
+
+- name: "destination"
+  color: "c5def5"
+  description: "Destination connectors (REST API, Slack, HubSpot…)"
+
+- name: "config"
+  color: "c5def5"
+  description: "Config models, YAML parsing, profiles"
+
+- name: "state"
+  color: "c5def5"
+  description: "State management and persistence"
+
+# ── Status ───────────────────────────────────────────────────────────────────
+- name: "good first issue"
+  color: "7057ff"
+  description: "Good for newcomers"
+
+- name: "help wanted"
+  color: "008672"
+  description: "Extra attention is needed"
+
+- name: "wontfix"
+  color: "ffffff"
+  description: "This will not be worked on"
+
+- name: "duplicate"
+  color: "cfd3d7"
+  description: "This issue or pull request already exists"
+
+# ── Version ──────────────────────────────────────────────────────────────────
+- name: "v0.1-prep"
+  color: "fbca04"
+  description: "v0.1.0 release preparation"
+
+- name: "v0.2"
+  color: "fbca04"
+  description: "Targeted for v0.2"
+
+- name: "v0.3"
+  color: "fbca04"
+  description: "Targeted for v0.3"
+
+- name: "v0.4"
+  color: "fbca04"
+  description: "Targeted for v0.4"
