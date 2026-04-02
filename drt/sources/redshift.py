@@ -43,8 +43,7 @@ class RedshiftSource:
             cur = conn.cursor()
             # Set search_path to the configured schema
             if config.schema:
-                from psycopg2 import sql
-                cur.execute(sql.SQL("SET search_path TO {}").format(sql.Identifier(config.schema)))
+                cur.execute("SET search_path TO %s", (config.schema,))
             cur.execute(query)
             columns = [desc[0] for desc in cur.description]
             for row in cur.fetchall():
