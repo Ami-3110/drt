@@ -190,10 +190,12 @@ Copy the files from `.claude/commands/` into your drt project's `.claude/command
 | **Source** | DuckDB | ✅ v0.1 | (core) |
 | **Source** | PostgreSQL | ✅ v0.1 | `pip install drt-core[postgres]` |
 | **Source** | Snowflake | 🗓 planned | `pip install drt-core[snowflake]` |
+| **Source** | SQLite | ✅ v0.4.2 | (core) |
 | **Source** | Redshift | ✅ v0.3.4 | `pip install drt-core[redshift]` |
 | **Source** | MySQL | 🗓 planned | `pip install drt-core[mysql]` |
 | **Destination** | REST API | ✅ v0.1 | (core) |
 | **Destination** | Slack Incoming Webhook | ✅ v0.1 | (core) |
+| **Destination** | Discord Webhook | ✅ v0.4.2 | (core) |
 | **Destination** | GitHub Actions (workflow_dispatch) | ✅ v0.1 | (core) |
 | **Destination** | HubSpot (Contacts / Deals / Companies) | ✅ v0.1 | (core) |
 | **Destination** | Google Sheets | ✅ v0.4 | `pip install drt-core[sheets]` |

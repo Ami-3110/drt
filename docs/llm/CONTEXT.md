@@ -14,7 +14,7 @@ dlt (load into DWH) → dbt (transform) → drt (activate out of DWH)
 - **Tagline:** "Reverse ETL for the code-first data stack"
 - **Install:** `pip install drt-core` or `uv add drt-core`
 - **Package name:** `drt-core` (PyPI) — CLI command is `drt`
-- **Current version:** v0.4.1
+- **Current version:** v0.4.2
 
 ## What drt is NOT
 
@@ -55,6 +55,7 @@ my-project/
 |--------|-------|-------|
 | BigQuery | `drt-core[bigquery]` | Uses ADC or keyfile. Supports `location` (e.g. `"EU"`, `"asia-northeast1"`) |
 | DuckDB | (core) | Local `.duckdb` file |
+| SQLite | (core) | Built-in `sqlite3`, no extra dependencies. Local `.sqlite` files or `:memory:` |
 | PostgreSQL | `drt-core[postgres]` | Connection string via env |
 | Redshift | `drt-core[redshift]` | PostgreSQL wire protocol via psycopg2. Supports `schema` (search_path). Port defaults to 5439. |
 
@@ -74,6 +75,7 @@ default:
 |-------------|-------------|-------|
 | REST API (generic) | `rest_api` | Any HTTP endpoint |
 | Slack Webhook | `slack` | Incoming webhook |
+| Discord Webhook | `discord` | Plain text or rich embeds via webhook URL |
 | GitHub Actions | `github_actions` | workflow_dispatch trigger |
 | HubSpot CRM | `hubspot` | Contacts / Deals / Companies upsert |
 | Google Sheets | `google_sheets` | Overwrite or append. Requires `drt-core[sheets]` |

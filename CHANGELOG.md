@@ -21,6 +21,26 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## drt-core
 
+## [0.4.2] - 2026-04-02
+
+### Added
+
+- **SQLite source connector** (#146 by @PFCAaron12): Zero-dependency source using Python's built-in `sqlite3` — ideal for testing, prototyping, and local development
+- **Discord webhook destination** (#147 by @xingzihai): Send messages and rich embeds to Discord channels via webhooks, following the same pattern as the Slack destination
+
+### Improved
+
+- **Redshift unit tests** (#145 by @HoudaBelhad): Replaced fake test double with real `RedshiftSource` + mock-based tests covering connection, query execution, error handling, and protocol compatibility
+- **RateLimiter boundary tests** (#125 by @kipra19821810-cloud): Added 11 boundary-value tests covering zero/negative rps, large values, rapid calls, and state management — regression tests for the v0.3.3 ZeroDivisionError fix
+
+### Fixed
+
+- **psycopg2 lazy import**: Moved top-level `from psycopg2 import sql` to method-level import, fixing CI failures in environments without psycopg2 installed
+
+### Community
+
+🎉 This release features contributions from **4 community members** — thank you @PFCAaron12, @xingzihai, @HoudaBelhad, and @kipra19821810-cloud!
+
 ## [0.4.1] - 2026-04-01
 
 ### Added
