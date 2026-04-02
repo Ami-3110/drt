@@ -1,12 +1,12 @@
 """Tests for SQLite source connector."""
+
 import os
 import sqlite3
 import tempfile
 import unittest
-import pytest
 
-from drt.sources.sqlite import SQLiteSource
 from drt.config.credentials import SQLiteProfile
+from drt.sources.sqlite import SQLiteSource
 
 
 class TestSQLiteSource(unittest.TestCase):
